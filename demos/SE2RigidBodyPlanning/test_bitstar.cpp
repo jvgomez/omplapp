@@ -22,50 +22,68 @@ using namespace ompl;
 
 int main()
 {
-    // plan in SE2
-    app::SE2RigidBodyPlanning setup;
+	double time = 0.1;
+	bool halton = true;
+	int iterations = 5;
 
-    // load the robot and the environment
-    std::string robot_fname = std::string(OMPLAPP_RESOURCE_DIR) + "/2D/car2_planar_robot.dae";
-    std::string env_fname = std::string(OMPLAPP_RESOURCE_DIR) + "/2D/Maze_planar_env.dae";
-    setup.setRobotMesh(robot_fname.c_str());
-    setup.setEnvironmentMesh(env_fname.c_str());
+    ompl::msg::setLogLevel(ompl::msg::LOG_WARN);
+	// Run  times the regular algorithm
+    for (int i = 0; i < iterations; ++i) {
+		std::cout << "RUN " << i << "\t";
+		// plan in SE2
+		app::SE2RigidBodyPlanning setup;
 
-    // define start state
-    base::ScopedState<base::SE2StateSpace> start(setup.getSpaceInformation());
-    start->setX(0.01);
-    start->setY(-0.15);
-    start->setYaw(0.0);
+		// load the robot and the environment
+		std::string robot_fname = std::string(OMPLAPP_RESOURCE_DIR) + "/2D/car2_planar_robot.dae";
+		std::string env_fname = std::string(OMPLAPP_RESOURCE_DIR) + "/2D/Maze_planar_env.dae";
+		setup.setRobotMesh(robot_fname.c_str());
+		setup.setEnvironmentMesh(env_fname.c_str());
 
-    // define goal state
-    base::ScopedState<base::SE2StateSpace> goal(start);
-    goal->setX(41.01);
-    goal->setY(-0.15);
-    goal->setYaw(0.802851455917);
+		// define start state
+		base::ScopedState<base::SE2StateSpace> start(setup.getSpaceInformation());
+		start->setX(0.01);
+		start->setY(-0.15);
+		start->setYaw(0.0);
 
-    // set the start & goal states
-    setup.setStartAndGoalStates(start, goal);
+		// define goal state
+		base::ScopedState<base::SE2StateSpace> goal(start);
+		goal->setX(41.01);
+		goal->setY(-0.15);
+		goal->setYaw(0.802851455917);
+		
+		 base::RealVectorBounds bounds(2);
+        bounds.setHigh(0,55.);
+        bounds.setHigh(1,55.);
+        bounds.setLow(0,-55.);
+        bounds.setLow(1,-55.);
+        setup.getStateSpace()->as<base::SE2StateSpace>()->setBounds(bounds);
 
-    // setting collision checking resolution to 1% of the space extent
-    setup.getSpaceInformation()->setStateValidityCheckingResolution(0.01);
+		// set the start & goal states
+		setup.setStartAndGoalStates(start, goal);
 
-    // make sure the planners run until the time limit, and get the best possible solution
-    setup.getProblemDefinition()->setOptimizationObjective(
-        std::make_shared<base::PathLengthOptimizationObjective>(setup.getSpaceInformation()));
+		// setting collision checking resolution to 1% of the space extent
+		setup.getSpaceInformation()->setStateValidityCheckingResolution(0.01);
 
-    setup.setup();
+		// make sure the planners run until the time limit, and get the best possible solution
+		setup.getProblemDefinition()->setOptimizationObjective(
+			std::make_shared<base::PathLengthOptimizationObjective>(setup.getSpaceInformation()));
 
-    std::stringstream res;
+		// run with RRT*
+		setup.setPlanner(std::make_shared<geometric::BITstar>(setup.getSpaceInformation()));
+		setup.getPlanner()->as<geometric::BITstar>()->setUseHalton(halton);
+		
+		setup.setup();
 
-    // run with RRT*
-    setup.setPlanner(std::make_shared<geometric::BITstar>(setup.getSpaceInformation()));
-    //setup.setPlanner(std::make_shared<geometric::RRTstar>(setup.getSpaceInformation()));
-    setup.solve(1);
+		setup.solve(time);
+		if (setup.haveExactSolutionPath()) {
+			double length = setup.getSolutionPath().length();
+			std::cout << setup.getLastPlanComputationTime() << "\t" << length << std::endl;
+		} else {
+			std::cout << time << "\t" << -1 << std::endl;
+		}
+	}
 
-    if (setup.haveExactSolutionPath()) {
-        double length = setup.getSolutionPath().length();
-        res << "time = "  << setup.getLastPlanComputationTime() << " \t length = " << length << std::endl;
-    }
+
     /*for (double time = 1.0 ; time < 10.1 ; time = time + 1.0)
     {
         setup.clear();
@@ -76,7 +94,6 @@ int main()
         res << "time = "  << setup.getLastPlanComputationTime() << " \t length = " << length << std::endl;
     }*/
 
-    std::cout << res.str();
     
     /*ompl::base::PlannerData data(setup.getSpaceInformation());
     setup.getPlanner()->getPlannerData(data);
