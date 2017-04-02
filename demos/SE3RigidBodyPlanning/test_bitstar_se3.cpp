@@ -10,7 +10,7 @@
 
 /* Author: Ioan Sucan */
 
-#include <omplapp/apps/SE2RigidBodyPlanning.h>
+#include <omplapp/apps/SE3RigidBodyPlanning.h>
 #include <ompl/geometric/planners/bitstar/BITstar.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
 #include <ompl/tools/multiplan/OptimizePlan.h>
@@ -24,39 +24,42 @@ int main()
 {
 	double time = 0.1;
 	bool halton = true;
-	int iterations = 5;
+	unsigned iterations = 50;
+	unsigned success = 0;
 
     ompl::msg::setLogLevel(ompl::msg::LOG_WARN);
 	// Run  times the regular algorithm
-    for (int i = 0; i < iterations; ++i) {
+    for (unsigned i = 0; i < iterations; ++i) {
 		std::cout << "RUN " << i << "\t";
-		// plan in SE2
-		app::SE2RigidBodyPlanning setup;
+		// plan in SE3
+		app::SE3RigidBodyPlanning setup;
 
 		// load the robot and the environment
-		std::string robot_fname = std::string(OMPLAPP_RESOURCE_DIR) + "/2D/car2_planar_robot.dae";
-		std::string env_fname = std::string(OMPLAPP_RESOURCE_DIR) + "/2D/Maze_planar_env.dae";
+		std::string robot_fname = std::string(OMPLAPP_RESOURCE_DIR) + "/3D/cubicles_robot.dae";
+		std::string env_fname = std::string(OMPLAPP_RESOURCE_DIR) + "/3D/cubicles_env.dae";
 		setup.setRobotMesh(robot_fname.c_str());
 		setup.setEnvironmentMesh(env_fname.c_str());
 
 		// define start state
-		base::ScopedState<base::SE2StateSpace> start(setup.getSpaceInformation());
-		start->setX(0.01);
-		start->setY(-0.15);
-		start->setYaw(0.0);
+		base::ScopedState<base::SE3StateSpace> start(setup.getSpaceInformation());
+		start->setXYZ(-4.96, -40.62, 70.75);
+		start->rotation().setAxisAngle(1, 0, 0, 0);
+		//start->setY(-40.62);
+		//start->setYaw(0.0);
 
 		// define goal state
-		base::ScopedState<base::SE2StateSpace> goal(start);
-		goal->setX(41.01);
-		goal->setY(-0.15);
-		goal->setYaw(0.802851455917);
+		base::ScopedState<base::SE3StateSpace> goal(start);
+		goal->setXYZ(200., -40.62, 70.75);
+		goal->rotation().setAxisAngle(1, 0, 0, 0);
 		
-		 base::RealVectorBounds bounds(2);
-        bounds.setHigh(0,55.);
-        bounds.setHigh(1,55.);
-        bounds.setLow(0,-55.);
-        bounds.setLow(1,-55.);
-        setup.getStateSpace()->as<base::SE2StateSpace>()->setBounds(bounds);
+		base::RealVectorBounds bounds(3);
+        bounds.setHigh(0,319.62);
+        bounds.setHigh(1,531.87);
+        bounds.setHigh(2,101.);
+        bounds.setLow(0,-508.88);
+        bounds.setLow(1,-230.13);
+        bounds.setLow(2,-123.75);
+        setup.getStateSpace()->as<base::SE3StateSpace>()->setBounds(bounds);
 
 		// set the start & goal states
 		setup.setStartAndGoalStates(start, goal);
@@ -78,10 +81,13 @@ int main()
 		if (setup.haveExactSolutionPath()) {
 			double length = setup.getSolutionPath().length();
 			std::cout << setup.getLastPlanComputationTime() << "\t" << length << std::endl;
+			++success;
 		} else {
 			std::cout << time << "\t" << -1 << std::endl;
 		}
 	}
+	
+	std::cout << "Success rate:\t" << 100. * success/iterations << std::endl; 
 
 
     /*for (double time = 1.0 ; time < 10.1 ; time = time + 1.0)
