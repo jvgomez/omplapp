@@ -17,20 +17,21 @@
 #include <ompl/base/objectives/PathLengthOptimizationObjective.h>
 #include <omplapp/config.h>
 
+#include <stdlib.h>
+
 
 using namespace ompl;
 
-int main()
+int main(int argc, char** argv)
 {
-	double time = 0.1;
+	double time = atof(argv[1]);
 	bool halton = true;
-	unsigned iterations = 50;
+	unsigned iterations = 1;
 	unsigned success = 0;
 
     ompl::msg::setLogLevel(ompl::msg::LOG_WARN);
 	// Run  times the regular algorithm
-    for (unsigned i = 0; i < iterations; ++i) {
-		std::cout << "RUN " << i << "\t";
+    for (unsigned i = 0; i < iterations+1; ++i) {
 		// plan in SE3
 		app::SE3RigidBodyPlanning setup;
 
@@ -76,18 +77,26 @@ int main()
 		setup.getPlanner()->as<geometric::BITstar>()->setUseHalton(halton);
 		
 		setup.setup();
-
-		setup.solve(time);
-		if (setup.haveExactSolutionPath()) {
-			double length = setup.getSolutionPath().length();
-			std::cout << setup.getLastPlanComputationTime() << "\t" << length << std::endl;
-			++success;
-		} else {
-			std::cout << time << "\t" << -1 << std::endl;
+		// First iteration is always slower - Ubuntu things.
+		if (i > 0) {
+			setup.solve(time);
+			//std::cout << "RUN " << i << "\t";
+			if (setup.haveExactSolutionPath()) {
+				double length = setup.getSolutionPath().length();
+				std::cout << setup.getLastPlanComputationTime() << "\t" << length << std::endl;
+				++success;
+			} else {
+				std::cout << time << "\t" << -1 << std::endl;
+			}
 		}
+		else {
+			// "Warm up"
+			setup.solve(0.01);
+		}
+
 	}
 	
-	std::cout << "Success rate:\t" << 100. * success/iterations << std::endl; 
+	//std::cout << "Success rate:\t" << 100. * success/iterations << std::endl; 
 
 
     /*for (double time = 1.0 ; time < 10.1 ; time = time + 1.0)
