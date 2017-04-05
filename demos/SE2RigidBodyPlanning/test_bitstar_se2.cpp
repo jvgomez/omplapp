@@ -22,7 +22,7 @@ using namespace ompl;
 
 int main()
 {
-	double time = 0.15;
+	double time = 4;
 	bool halton = false;
 	unsigned iterations = 1;
 	unsigned success = 0;
@@ -85,6 +85,15 @@ int main()
 			} else {
 				std::cout << time << "\t" << -1 << std::endl;
 			}
+			/*ompl::base::PlannerData data(setup.getSpaceInformation());
+			setup.getPlanner()->getPlannerData(data);
+			std::cout << data.numVertices() << std::endl;
+			for (unsigned i = 0; i < data.numVertices(); ++i) {
+			const base::State *s = data.getVertex(i).getState();
+			std::cout << s->as<base::SE2StateSpace::StateType>()->getX() << "\t"
+					  << s->as<base::SE2StateSpace::StateType>()->getY() << "\t"
+					  << s->as<base::SE2StateSpace::StateType>()->getYaw() << std::endl;
+			}*/
 		}
 		else {
 			// "Warm up"
